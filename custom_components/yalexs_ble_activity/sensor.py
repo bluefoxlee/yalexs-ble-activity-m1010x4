@@ -32,6 +32,10 @@ from yalexs_ble import ConnectionInfo, DoorActivity, LockActivity, LockInfo, Raw
 
 from .const import (
     ATTR_ACTIVITY_TYPE,
+    ATTR_LAST_PIN_ACTIVITY_TYPE,
+    ATTR_LAST_PIN_ID,
+    ATTR_LAST_PIN_RAW_FRAME,
+    ATTR_LAST_PIN_TIMESTAMP,
     ATTR_PIN_ID,
     ATTR_RAW_FRAME,
     ATTR_REMOTE_TYPE,
@@ -81,6 +85,7 @@ class YaleXSBLEOperationSensor(YALEXSBLEEntity, SensorEntity, RestoreEntity):
         """Initialize the sensor."""
         super().__init__(data)
         self._attr_unique_id = f"{data.lock.address}operation"
+        self._last_pin_attributes: dict[str, Any] = {}
 
     @callback
     def _async_activity_update(
@@ -91,7 +96,7 @@ class YaleXSBLEOperationSensor(YALEXSBLEEntity, SensorEntity, RestoreEntity):
     ) -> None:
         """Handle activity update."""
 
-        value, attributes = self._extract_values(activity)
+        value, attributes = self._activity_values(activity)
 
         _LOGGER.debug("creating event for activity update")
 
@@ -104,7 +109,7 @@ class YaleXSBLEOperationSensor(YALEXSBLEEntity, SensorEntity, RestoreEntity):
             },
         )
 
-        self._record_activity(activity)
+        self._record_activity(activity, value, attributes)
         self._pending_activity_update = activity
 
         if self._cancel_pending_activity_update:
@@ -117,9 +122,11 @@ class YaleXSBLEOperationSensor(YALEXSBLEEntity, SensorEntity, RestoreEntity):
         )
 
     def _record_activity(
-        self, activity: DoorActivity | LockActivity | RawActivity
+        self,
+        activity: DoorActivity | LockActivity | RawActivity,
+        native_value: str | None,
+        attributes: dict[str, Any],
     ) -> None:
-        native_value, attributes = self._extract_values(activity)
         state_changed_data: EventStateChangedData = {
             "entity_id": self.entity_id,
             "old_state": None,
@@ -147,7 +154,7 @@ class YaleXSBLEOperationSensor(YALEXSBLEEntity, SensorEntity, RestoreEntity):
         _LOGGER.debug("flushing pending activity update")
 
         self._attr_native_value, self._attr_extra_state_attributes = (
-            self._extract_values(activity)
+            self._activity_values(activity)
         )
         self._pending_activity_update = None
 
@@ -184,6 +191,28 @@ class YaleXSBLEOperationSensor(YALEXSBLEEntity, SensorEntity, RestoreEntity):
 
         return (value, attributes)
 
+    def _activity_values(
+        self,
+        activity: DoorActivity | LockActivity | RawActivity,
+    ) -> tuple[str | None, dict[str, Any]]:
+        """Extract values and retain the latest raw PIN record.
+
+        Returns:
+            The sensor value and attributes for the activity.
+        """
+        value, attributes = self._extract_values(activity)
+
+        if isinstance(activity, RawActivity) and activity.pin_id is not None:
+            self._last_pin_attributes = {
+                ATTR_LAST_PIN_ACTIVITY_TYPE: attributes[ATTR_ACTIVITY_TYPE],
+                ATTR_LAST_PIN_ID: attributes[ATTR_PIN_ID],
+                ATTR_LAST_PIN_RAW_FRAME: attributes[ATTR_RAW_FRAME],
+                ATTR_LAST_PIN_TIMESTAMP: activity.timestamp,
+            }
+
+        attributes.update(self._last_pin_attributes)
+        return value, attributes
+
     async def async_added_to_hass(self) -> None:
         """Register callbacks, perform initial updates & restore state."""
         await super().async_added_to_hass()
@@ -201,7 +230,18 @@ class YaleXSBLEOperationSensor(YALEXSBLEEntity, SensorEntity, RestoreEntity):
         ):
             extra_data_dict = extra_data.as_dict()
             self._attr_native_value = extra_data_dict["value"]
-            self._attr_extra_state_attributes = extra_data_dict["attributes"]
+            restored_attributes = extra_data_dict["attributes"]
+            self._attr_extra_state_attributes = restored_attributes
+            self._last_pin_attributes = {
+                key: restored_attributes[key]
+                for key in (
+                    ATTR_LAST_PIN_ACTIVITY_TYPE,
+                    ATTR_LAST_PIN_ID,
+                    ATTR_LAST_PIN_RAW_FRAME,
+                    ATTR_LAST_PIN_TIMESTAMP,
+                )
+                if key in restored_attributes
+            }
 
     @property
     def extra_restore_state_data(self) -> ExtraStoredData | None:

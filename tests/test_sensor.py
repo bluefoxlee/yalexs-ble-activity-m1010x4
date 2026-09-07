@@ -143,6 +143,33 @@ def test_extract_raw_pin_activity() -> None:
     }
 
 
+def test_raw_pin_activity_is_retained_after_later_activity() -> None:
+    """Keep the latest raw PIN details visible after later records arrive."""
+    sensor = object.__new__(YaleXSBLEOperationSensor)
+    sensor._last_pin_attributes = {}
+    raw_activity = RawActivity(
+        timestamp=MOCK_UTC_NOW,
+        activity_type=0x07,
+        raw_frame="bb2d000007000102030405060708090a0b0c",
+        pin_id=0x22,
+    )
+
+    raw_value, raw_attributes = sensor._activity_values(raw_activity)
+    later_value, later_attributes = sensor._activity_values(
+        LockActivity(
+            timestamp=MOCK_UTC_NOW,
+            status=LockStatus.LOCKED,
+            source=LockOperationSource.PIN,
+        )
+    )
+
+    assert raw_value == "activity_0x07"
+    assert raw_attributes["last_pin_id"] == "0x22"
+    assert later_value == "lock_locked"
+    assert later_attributes["last_pin_id"] == "0x22"
+    assert later_attributes["last_pin_raw_frame"] == raw_activity.raw_frame
+
+
 RESTORE_STATE_PARAMETRIZED = ("stored_data", "expected_state", "expected_attributes")
 RESTORE_STATE_SCENARIOS = {
     "simple": {
