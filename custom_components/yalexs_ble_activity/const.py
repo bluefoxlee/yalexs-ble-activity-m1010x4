@@ -11,6 +11,9 @@ ATTR_REMOTE_TYPE: Final = "remote_type"
 ATTR_SLOT: Final = "slot"
 ATTR_SOURCE: Final = "source"
 ATTR_TIMESTAMP: Final = "timestamp"
+ATTR_ACTIVITY_TYPE: Final = "activity_type"
+ATTR_PIN_ID: Final = "pin_id"
+ATTR_RAW_FRAME: Final = "raw_frame"
 
 CONF_LOCK_ENTITIES: Final = "lock_entities"
 

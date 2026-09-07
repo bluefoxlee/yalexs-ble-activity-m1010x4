@@ -15,13 +15,15 @@ from pytest_homeassistant_custom_component.common import (
     snapshot_platform,
 )
 from syrupy.assertion import SnapshotAssertion
-from yalexs_ble import DoorActivity, LockActivity
+from yalexs_ble import DoorActivity, LockActivity, RawActivity
 from yalexs_ble.const import (
     DoorStatus,
     LockOperationRemoteType,
     LockOperationSource,
     LockStatus,
 )
+
+from custom_components.yalexs_ble_activity.sensor import YaleXSBLEOperationSensor
 
 from . import MOCK_UTC_NOW, MockNow, setup_integration
 
@@ -118,6 +120,27 @@ async def test_sensor_activity_update(
     now._tick(2)
     await hass.async_block_till_done()
     _snapshot("post-tick")
+
+
+def test_extract_raw_pin_activity() -> None:
+    """Expose provisional 0x07 records without inventing a lock status."""
+    value, attributes = YaleXSBLEOperationSensor._extract_values(
+        RawActivity(
+            timestamp=MOCK_UTC_NOW,
+            activity_type=0x07,
+            raw_frame="bb2d000007000102030405060708090a0b0c",
+            pin_id=0x22,
+        )
+    )
+
+    assert value == "activity_0x07"
+    assert attributes == {
+        "activity_type": "0x07",
+        "pin_id": "0x22",
+        "raw_frame": "bb2d000007000102030405060708090a0b0c",
+        "source": "pin",
+        "timestamp": MOCK_UTC_NOW,
+    }
 
 
 RESTORE_STATE_PARAMETRIZED = ("stored_data", "expected_state", "expected_attributes")

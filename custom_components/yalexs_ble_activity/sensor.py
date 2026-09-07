@@ -28,9 +28,12 @@ from homeassistant.helpers.restore_state import (
     RestoreEntity,
 )
 from homeassistant.util import dt as dt_util
-from yalexs_ble import ConnectionInfo, DoorActivity, LockActivity, LockInfo
+from yalexs_ble import ConnectionInfo, DoorActivity, LockActivity, LockInfo, RawActivity
 
 from .const import (
+    ATTR_ACTIVITY_TYPE,
+    ATTR_PIN_ID,
+    ATTR_RAW_FRAME,
     ATTR_REMOTE_TYPE,
     ATTR_SLOT,
     ATTR_SOURCE,
@@ -68,7 +71,7 @@ class YaleXSBLEOperationSensor(YALEXSBLEEntity, SensorEntity, RestoreEntity):
 
     _attr_translation_key = "operation"
     _attr_icon = "mdi:lock-clock"
-    _pending_activity_update: DoorActivity | LockActivity | None = None
+    _pending_activity_update: DoorActivity | LockActivity | RawActivity | None = None
     _cancel_pending_activity_update: CALLBACK_TYPE | None = None
 
     def __init__(
@@ -82,7 +85,7 @@ class YaleXSBLEOperationSensor(YALEXSBLEEntity, SensorEntity, RestoreEntity):
     @callback
     def _async_activity_update(
         self,
-        activity: DoorActivity | LockActivity,
+        activity: DoorActivity | LockActivity | RawActivity,
         lock_info: LockInfo,  # noqa: ARG002
         connection_info: ConnectionInfo,  # noqa: ARG002
     ) -> None:
@@ -113,7 +116,9 @@ class YaleXSBLEOperationSensor(YALEXSBLEEntity, SensorEntity, RestoreEntity):
             self._flush_pending_update,
         )
 
-    def _record_activity(self, activity: DoorActivity | LockActivity) -> None:
+    def _record_activity(
+        self, activity: DoorActivity | LockActivity | RawActivity
+    ) -> None:
         native_value, attributes = self._extract_values(activity)
         state_changed_data: EventStateChangedData = {
             "entity_id": self.entity_id,
@@ -150,7 +155,7 @@ class YaleXSBLEOperationSensor(YALEXSBLEEntity, SensorEntity, RestoreEntity):
 
     @staticmethod
     def _extract_values(
-        activity: DoorActivity | LockActivity,
+        activity: DoorActivity | LockActivity | RawActivity,
     ) -> tuple[str | None, dict[str, Any]]:
         value: str | None = None
         attributes: dict[str, Any] = {}
@@ -166,6 +171,16 @@ class YaleXSBLEOperationSensor(YALEXSBLEEntity, SensorEntity, RestoreEntity):
                 attributes[ATTR_REMOTE_TYPE] = activity.remote_type.name.lower()
             if activity.slot is not None:
                 attributes[ATTR_SLOT] = activity.slot
+        elif isinstance(activity, RawActivity):
+            value = f"activity_0x{activity.activity_type:02x}"
+            attributes[ATTR_TIMESTAMP] = activity.timestamp
+            attributes[ATTR_ACTIVITY_TYPE] = f"0x{activity.activity_type:02X}"
+            attributes[ATTR_RAW_FRAME] = activity.raw_frame
+            if activity.pin_id is not None:
+                # This is a provisional internal credential identifier, not
+                # the confirmed Yale slot number.
+                attributes[ATTR_SOURCE] = "pin"
+                attributes[ATTR_PIN_ID] = f"0x{activity.pin_id:02X}"
 
         return (value, attributes)
 
