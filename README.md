@@ -55,6 +55,19 @@ Or you can use the My Home Assistant Button below.
 
 Follow the instructions to configure the integration.
 
+The integration options include an optional local PIN identifier mapping. Enter
+one entry per line using the form `0xNN=Name`, for example:
+
+```text
+0x1A=Person A
+0x22=Person B
+0xEE=Master PIN user
+```
+
+These are the identifier bytes reported by the lock, not the PIN values. The
+mapping is stored in the Home Assistant config entry and is not part of the
+source code. Unknown identifiers remain available as their original `pin_id`.
+
 ## Entities
 
 One _sensor_ entity is created for each selected lock:
@@ -81,6 +94,9 @@ The sensor value will only change to the most recent value obtained and will ski
 - `source`: The source of a lock operation. Possible values: `remote`, `manual`, `auto_lock`, `pin` or `unknown`. Not present for door related activity.
 - `remote_type`: The type of remote operation performed. Not present for door related activity.
 - `slot`: This is a unique integer representing the code used. Only present for unlock activity with `source=pin`.
+- `pin_id`: The raw hexadecimal credential identifier exposed by the patched activity parser.
+- `pin_name`: The optional local name configured for the current raw PIN activity.
+- `last_pin_id`, `last_pin_name`, `last_pin_raw_frame`, `last_pin_timestamp`: The latest raw PIN details retained after later door/lock activity is received.
 
 ## Events
 

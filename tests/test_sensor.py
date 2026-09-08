@@ -23,6 +23,7 @@ from yalexs_ble.const import (
     LockStatus,
 )
 
+from custom_components.yalexs_ble_activity.const import CONF_PIN_NAMES
 from custom_components.yalexs_ble_activity.sensor import YaleXSBLEOperationSensor
 
 from . import MOCK_UTC_NOW, MockNow, setup_integration
@@ -168,6 +169,37 @@ def test_raw_pin_activity_is_retained_after_later_activity() -> None:
     assert later_value == "lock_locked"
     assert later_attributes["last_pin_id"] == "0x22"
     assert later_attributes["last_pin_raw_frame"] == raw_activity.raw_frame
+
+
+async def test_raw_pin_activity_includes_configured_name(
+    hass: HomeAssistant,
+    config_entry: MockConfigEntry,
+    lock: er.RegistryEntry,
+) -> None:
+    """Add the configured local name without changing the raw PIN identifier."""
+    config_entry.data[CONF_PIN_NAMES] = {"0x22": "Person B"}
+    await setup_integration(hass, config_entry)
+
+    activity_update = _activity_update_handler(hass, lock)
+    activity_update(
+        RawActivity(
+            timestamp=MOCK_UTC_NOW,
+            activity_type=0x07,
+            raw_frame="bb2d000007000102030405060708090a0b0c",
+            pin_id=0x22,
+        ),
+        lock_info=None,
+        connection_info=None,
+    )
+
+    operation_entity = activity_update.__self__
+    value, attributes = operation_entity._activity_values(
+        operation_entity._pending_activity_update
+    )
+    assert value == "activity_0x07"
+    assert attributes["pin_id"] == "0x22"
+    assert attributes["pin_name"] == "Person B"
+    assert attributes["last_pin_name"] == "Person B"
 
 
 RESTORE_STATE_PARAMETRIZED = ("stored_data", "expected_state", "expected_attributes")

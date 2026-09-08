@@ -13,10 +13,16 @@ from homeassistant.config_entries import (
     OptionsFlow,
 )
 from homeassistant.core import callback
-from homeassistant.helpers.selector import EntitySelector, EntitySelectorConfig
+from homeassistant.helpers.selector import (
+    EntitySelector,
+    EntitySelectorConfig,
+    TextSelector,
+    TextSelectorConfig,
+)
 import voluptuous as vol
 
-from .const import CONF_LOCK_ENTITIES, DOMAIN
+from .const import CONF_LOCK_ENTITIES, CONF_PIN_NAMES, DOMAIN
+from .pin_mapping import format_pin_names, parse_pin_names
 
 STEP_USER_DATA_SCHEMA = vol.Schema(
     {
@@ -29,6 +35,7 @@ STEP_USER_DATA_SCHEMA = vol.Schema(
                 multiple=True,
             ),
         ),
+        vol.Optional(CONF_PIN_NAMES): TextSelector(TextSelectorConfig(multiline=True)),
     }
 )
 
@@ -60,8 +67,23 @@ class YaleXSBLEActivityConfigFlow(ConfigFlow, domain=DOMAIN):  # type: ignore[ca
             The config flow result.
         """
         if user_input is not None:
+            try:
+                pin_names = parse_pin_names(user_input.get(CONF_PIN_NAMES))
+            except ValueError:
+                return self.async_show_form(
+                    step_id="user",
+                    data_schema=self.add_suggested_values_to_schema(
+                        STEP_USER_DATA_SCHEMA, user_input
+                    ),
+                    errors={CONF_PIN_NAMES: "invalid_pin_names"},
+                )
+
             return self.async_create_entry(
-                title="Yale Access Bluetooth Activity", data=user_input
+                title="Yale Access Bluetooth Activity",
+                data={
+                    **user_input,
+                    CONF_PIN_NAMES: pin_names,
+                },
             )
 
         return self.async_show_form(
@@ -85,9 +107,24 @@ class YaleXSBLEActivityOptionsFlow(OptionsFlow):
             The config flow result.
         """
         if user_input is not None:
+            try:
+                pin_names = parse_pin_names(user_input.get(CONF_PIN_NAMES))
+            except ValueError:
+                return self.async_show_form(
+                    step_id="init",
+                    data_schema=self.add_suggested_values_to_schema(
+                        STEP_USER_DATA_SCHEMA, user_input
+                    ),
+                    errors={CONF_PIN_NAMES: "invalid_pin_names"},
+                )
+
             self.hass.config_entries.async_update_entry(
                 self.config_entry,
-                data={**self.config_entry.data, **user_input},
+                data={
+                    **self.config_entry.data,
+                    **user_input,
+                    CONF_PIN_NAMES: pin_names,
+                },
             )
             return self.async_create_entry(data={})
 
@@ -95,6 +132,11 @@ class YaleXSBLEActivityOptionsFlow(OptionsFlow):
             step_id="init",
             data_schema=self.add_suggested_values_to_schema(
                 STEP_USER_DATA_SCHEMA,
-                self.config_entry.data if user_input is None else user_input,
+                {
+                    **self.config_entry.data,
+                    CONF_PIN_NAMES: format_pin_names(
+                        self.config_entry.data.get(CONF_PIN_NAMES)
+                    ),
+                },
             ),
         )

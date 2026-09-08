@@ -4,14 +4,31 @@
             "already_configured": "Device is already configured"
         },
         "error": {
-            "unknown": "Unexpected error"
+            "unknown": "Unexpected error",
+            "invalid_pin_names": "Use one entry per line in the format 0xNN=Name."
         },
         "step": {
             "user": {
                 "data": {
-                    "lock_entities": "The Yale Bluetooth Access lock(s)"
+                    "lock_entities": "The Yale Bluetooth Access lock(s)",
+                    "pin_names": "PIN identifier names"
                 },
-                "description": "Access activity from Yale smart locks",
+                "description": "Access activity from Yale smart locks. Optionally enter one local name per line in the format 0xNN=Name.",
+                "title": "Yale Access Bluetooth Activity"
+            }
+        }
+    },
+    "options": {
+        "error": {
+            "invalid_pin_names": "Use one entry per line in the format 0xNN=Name."
+        },
+        "step": {
+            "init": {
+                "data": {
+                    "lock_entities": "The Yale Bluetooth Access lock(s)",
+                    "pin_names": "PIN identifier names"
+                },
+                "description": "Enter one local name per line in the format 0xNN=Name. These are credential identifiers, not the PIN values.",
                 "title": "Yale Access Bluetooth Activity"
             }
         }

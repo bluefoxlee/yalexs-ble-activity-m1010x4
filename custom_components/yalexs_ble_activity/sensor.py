@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 import datetime as dt
 import logging
 from typing import Any
@@ -34,15 +35,18 @@ from .const import (
     ATTR_ACTIVITY_TYPE,
     ATTR_LAST_PIN_ACTIVITY_TYPE,
     ATTR_LAST_PIN_ID,
+    ATTR_LAST_PIN_NAME,
     ATTR_LAST_PIN_RAW_FRAME,
     ATTR_LAST_PIN_TIMESTAMP,
     ATTR_PIN_ID,
+    ATTR_PIN_NAME,
     ATTR_RAW_FRAME,
     ATTR_REMOTE_TYPE,
     ATTR_SLOT,
     ATTR_SOURCE,
     ATTR_TIMESTAMP,
     CONF_LOCK_ENTITIES,
+    CONF_PIN_NAMES,
     OPERATION_SENSOR_WRITE_DELAY,
 )
 
@@ -57,9 +61,10 @@ async def async_setup_entry(  # noqa: RUF029
     """Set up Yale Access Bluetooth Activity sensors."""
 
     entity_registry = er.async_get(hass)
+    pin_names = entry.data.get(CONF_PIN_NAMES, {})
 
     async_add_entities(
-        YaleXSBLEOperationSensor(data)
+        YaleXSBLEOperationSensor(data, pin_names)
         for lock_enitity_id in entry.data[CONF_LOCK_ENTITIES]
         if (
             (lock_entry := entity_registry.async_get(lock_enitity_id))
@@ -81,10 +86,12 @@ class YaleXSBLEOperationSensor(YALEXSBLEEntity, SensorEntity, RestoreEntity):
     def __init__(
         self,
         data: YaleXSBLEData,
+        pin_names: Mapping[str, str] | None = None,
     ) -> None:
         """Initialize the sensor."""
         super().__init__(data)
         self._attr_unique_id = f"{data.lock.address}operation"
+        self._pin_names = dict(pin_names or {})
         self._last_pin_attributes: dict[str, Any] = {}
 
     @callback
@@ -209,6 +216,9 @@ class YaleXSBLEOperationSensor(YALEXSBLEEntity, SensorEntity, RestoreEntity):
                 ATTR_LAST_PIN_RAW_FRAME: attributes[ATTR_RAW_FRAME],
                 ATTR_LAST_PIN_TIMESTAMP: activity.timestamp,
             }
+            if pin_name := self._pin_names.get(attributes[ATTR_PIN_ID]):
+                attributes[ATTR_PIN_NAME] = pin_name
+                self._last_pin_attributes[ATTR_LAST_PIN_NAME] = pin_name
 
         attributes.update(self._last_pin_attributes)
         return value, attributes
@@ -230,13 +240,24 @@ class YaleXSBLEOperationSensor(YALEXSBLEEntity, SensorEntity, RestoreEntity):
         ):
             extra_data_dict = extra_data.as_dict()
             self._attr_native_value = extra_data_dict["value"]
-            restored_attributes = extra_data_dict["attributes"]
+            restored_attributes = dict(extra_data_dict["attributes"] or {})
+            if last_pin_id := restored_attributes.get(ATTR_LAST_PIN_ID):
+                if pin_name := self._pin_names.get(last_pin_id):
+                    restored_attributes[ATTR_LAST_PIN_NAME] = pin_name
+                else:
+                    restored_attributes.pop(ATTR_LAST_PIN_NAME, None)
+            if pin_id := restored_attributes.get(ATTR_PIN_ID):
+                if pin_name := self._pin_names.get(pin_id):
+                    restored_attributes[ATTR_PIN_NAME] = pin_name
+                else:
+                    restored_attributes.pop(ATTR_PIN_NAME, None)
             self._attr_extra_state_attributes = restored_attributes
             self._last_pin_attributes = {
                 key: restored_attributes[key]
                 for key in (
                     ATTR_LAST_PIN_ACTIVITY_TYPE,
                     ATTR_LAST_PIN_ID,
+                    ATTR_LAST_PIN_NAME,
                     ATTR_LAST_PIN_RAW_FRAME,
                     ATTR_LAST_PIN_TIMESTAMP,
                 )

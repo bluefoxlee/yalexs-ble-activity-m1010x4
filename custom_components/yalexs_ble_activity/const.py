@@ -13,13 +13,16 @@ ATTR_SOURCE: Final = "source"
 ATTR_TIMESTAMP: Final = "timestamp"
 ATTR_ACTIVITY_TYPE: Final = "activity_type"
 ATTR_PIN_ID: Final = "pin_id"
+ATTR_PIN_NAME: Final = "pin_name"
 ATTR_RAW_FRAME: Final = "raw_frame"
 ATTR_LAST_PIN_ACTIVITY_TYPE: Final = "last_pin_activity_type"
 ATTR_LAST_PIN_ID: Final = "last_pin_id"
+ATTR_LAST_PIN_NAME: Final = "last_pin_name"
 ATTR_LAST_PIN_RAW_FRAME: Final = "last_pin_raw_frame"
 ATTR_LAST_PIN_TIMESTAMP: Final = "last_pin_timestamp"
 
 CONF_LOCK_ENTITIES: Final = "lock_entities"
+CONF_PIN_NAMES: Final = "pin_names"
 
 OPERATION_SENSOR_WRITE_DELAY: Final = 2
 

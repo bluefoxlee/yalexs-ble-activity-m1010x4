@@ -9,7 +9,11 @@ from homeassistant.helpers import entity_registry as er
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.yalexs_ble_activity.const import CONF_LOCK_ENTITIES, DOMAIN
+from custom_components.yalexs_ble_activity.const import (
+    CONF_LOCK_ENTITIES,
+    CONF_PIN_NAMES,
+    DOMAIN,
+)
 
 
 @pytest.mark.parametrize(
@@ -18,9 +22,14 @@ from custom_components.yalexs_ble_activity.const import CONF_LOCK_ENTITIES, DOMA
         (
             {
                 CONF_LOCK_ENTITIES: ["lock.front_door"],
+                CONF_PIN_NAMES: "0x22=Person B\n0xEE=Master PIN user",
             },
             {
                 CONF_LOCK_ENTITIES: ["lock.front_door"],
+                CONF_PIN_NAMES: {
+                    "0x22": "Person B",
+                    "0xEE": "Master PIN user",
+                },
             },
         ),
     ],
@@ -88,10 +97,12 @@ async def test_options_flow(
         result["flow_id"],
         user_input={
             CONF_LOCK_ENTITIES: ["lock.front_door"],
+            CONF_PIN_NAMES: "0x22=Person B",
         },
     )
 
     assert result["type"] is FlowResultType.CREATE_ENTRY
     assert mock_config.data == {
         CONF_LOCK_ENTITIES: ["lock.front_door"],
+        CONF_PIN_NAMES: {"0x22": "Person B"},
     }
