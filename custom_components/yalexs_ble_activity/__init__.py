@@ -10,11 +10,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import Event, HomeAssistant
 from homeassistant.exceptions import ConfigEntryError
-from homeassistant.helpers import (
-    config_validation as cv,
-    device_registry as dr,
-    entity_registry as er,
-)
+from homeassistant.helpers import config_validation as cv, entity_registry as er
 from homeassistant.helpers.event import async_track_entity_registry_updated_event
 from homeassistant.helpers.issue_registry import IssueSeverity, async_create_issue
 from homeassistant.util import package as pkg_util
@@ -79,19 +75,6 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     Returns:
         If the unload was successful.
     """
-
-    # remove this config entry from the real core devices as a way of keeping
-    # the state of things clean. this is particularly helpful when changing
-    # the chosen locks on the entry where the UI would still display the old
-    # device connection when a lock was removed.
-    device_registry = dr.async_get(hass)
-    device_entries = dr.async_entries_for_config_entry(
-        device_registry, config_entry_id=entry.entry_id
-    )
-    for device in device_entries:
-        device_registry.async_update_device(
-            device.id, remove_config_entry_id=entry.entry_id
-        )
 
     return bool(await hass.config_entries.async_unload_platforms(entry, PLATFORMS))
 

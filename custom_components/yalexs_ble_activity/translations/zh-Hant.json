@@ -1,0 +1,75 @@
+{
+    "config": {
+        "abort": {
+            "already_configured": "裝置已經設定"
+        },
+        "error": {
+            "unknown": "發生未預期的錯誤",
+            "invalid_pin_names": "請每行輸入一筆，格式為 0xNN=姓名。"
+        },
+        "step": {
+            "user": {
+                "data": {
+                    "lock_entities": "Yale Bluetooth Access 鎖",
+                    "pin_names": "鎖回報 ID／人員對照"
+                },
+                    "description": "選取要讀取活動的鎖。可在下方每行新增一筆對照，例如 0x22=使用者 A。這是鎖回報的識別 ID，不是實際的通行碼；未知 ID 仍會保留顯示。",
+                "title": "Yale Access Bluetooth Activity"
+            }
+        }
+    },
+    "options": {
+        "error": {
+            "invalid_pin_names": "請每行輸入一筆，格式為 0xNN=姓名。"
+        },
+        "step": {
+            "init": {
+                "data": {
+                    "lock_entities": "Yale Bluetooth Access 鎖",
+                    "pin_names": "鎖回報 ID／人員對照"
+                },
+                    "description": "新增或修改人員時，每行輸入一筆 0xNN=姓名，例如 0x22=使用者 A。這是鎖回報的識別 ID，不是實際的通行碼；未知 ID 仍會保留顯示。",
+                "title": "Yale Access Bluetooth Activity 設定"
+            }
+        }
+    },
+    "entity": {
+        "sensor": {
+            "operation": {
+                "name": "操作",
+                "state": {
+                    "door_unknown": "門狀態未知",
+                    "door_closed": "門已關閉",
+                    "door_ajar": "門未關妥",
+                    "door_opened": "門已打開",
+                    "lock_unknown": "鎖定狀態未知",
+                    "lock_unlocking": "正在解鎖",
+                    "lock_unlocked": "門已解鎖",
+                    "lock_locking": "正在上鎖",
+                    "lock_locked": "門已上鎖"
+                }
+            }
+        }
+    },
+    "exceptions": {
+        "yalexs_ble_patched": {
+            "message": "需要重新啟動，才能使用修補後的 yalexs_ble 套件"
+        },
+        "yalexs_ble_no_patch_available": {
+            "message": "找不到 yalexs_ble=={yalexs_ble_version} 的修補版本"
+        }
+    },
+    "issues": {
+        "lock_entity_removed": {
+            "title": "鎖實體已被移除",
+            "fix_flow": {
+                "step": {
+                    "confirm": {
+                        "description": "HA 中的實體 `{entity_id}` 已被移除，但仍在 Yale Access Bluetooth Activity 使用。請從鎖實體清單移除 `{entity_id}`。",
+                        "title": "鎖實體已被移除"
+                    }
+                }
+            }
+        }
+    }
+}

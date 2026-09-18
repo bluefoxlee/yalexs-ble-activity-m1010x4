@@ -36,7 +36,18 @@
     "entity": {
         "sensor": {
             "operation": {
-                "name": "Operation"
+                "name": "Operation",
+                "state": {
+                    "door_unknown": "Unknown door state",
+                    "door_closed": "Door closed",
+                    "door_ajar": "Door ajar",
+                    "door_opened": "Door opened",
+                    "lock_unknown": "Unknown lock state",
+                    "lock_unlocking": "Unlocking",
+                    "lock_unlocked": "Unlocked",
+                    "lock_locking": "Locking",
+                    "lock_locked": "Locked"
+                }
             }
         }
     },

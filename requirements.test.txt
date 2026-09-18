@@ -4,7 +4,7 @@ pytest==8.3.5
 pytest-cov==6.0.0
 pytest-homeassistant-custom-component==0.13.252
 syrupy==4.8.1
-yalexs-ble @ git+https://github.com/wbyoung/yalexs-ble@yalexs-ble-4.0.1-patches
+yalexs-ble @ git+https://github.com/bluefoxlee/yalexs-ble-m1010x4@yalexs-ble-4.0.1-patches
 aiousbwatcher==1.1.1
 pyserial==3.5
 

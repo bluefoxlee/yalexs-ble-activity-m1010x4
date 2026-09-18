@@ -8,11 +8,22 @@ import logging
 from typing import Any
 
 from homeassistant.components import recorder
+from homeassistant.components.lock import DOMAIN as LOCK_DOMAIN
+from homeassistant.components.logbook.const import (
+    LOGBOOK_ENTRY_DOMAIN,
+    LOGBOOK_ENTRY_MESSAGE,
+    LOGBOOK_ENTRY_NAME,
+)
 from homeassistant.components.sensor import SensorEntity
 from homeassistant.components.yalexs_ble.entity import YALEXSBLEEntity
 from homeassistant.components.yalexs_ble.models import YaleXSBLEData
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import EVENT_STATE_CHANGED, STATE_UNAVAILABLE, STATE_UNKNOWN
+from homeassistant.const import (
+    EVENT_LOGBOOK_ENTRY,
+    EVENT_STATE_CHANGED,
+    STATE_UNAVAILABLE,
+    STATE_UNKNOWN,
+)
 from homeassistant.core import (
     CALLBACK_TYPE,
     Event,
@@ -64,10 +75,10 @@ async def async_setup_entry(  # noqa: RUF029
     pin_names = entry.data.get(CONF_PIN_NAMES, {})
 
     async_add_entities(
-        YaleXSBLEOperationSensor(data, pin_names)
-        for lock_enitity_id in entry.data[CONF_LOCK_ENTITIES]
+        YaleXSBLEOperationSensor(data, pin_names, lock_entity_id)
+        for lock_entity_id in entry.data[CONF_LOCK_ENTITIES]
         if (
-            (lock_entry := entity_registry.async_get(lock_enitity_id))
+            (lock_entry := entity_registry.async_get(lock_entity_id))
             and (core_entry_id := lock_entry.config_entry_id)
             and (core_entry := hass.config_entries.async_get_known_entry(core_entry_id))
             and (data := core_entry.runtime_data)
@@ -87,12 +98,15 @@ class YaleXSBLEOperationSensor(YALEXSBLEEntity, SensorEntity, RestoreEntity):
         self,
         data: YaleXSBLEData,
         pin_names: Mapping[str, str] | None = None,
+        lock_entity_id: str | None = None,
     ) -> None:
         """Initialize the sensor."""
         super().__init__(data)
         self._attr_unique_id = f"{data.lock.address}operation"
         self._pin_names = dict(pin_names or {})
+        self._lock_entity_id = lock_entity_id
         self._last_pin_attributes: dict[str, Any] = {}
+        self._last_logged_activity_key: tuple[str, float] | None = None
 
     @callback
     def _async_activity_update(
@@ -116,7 +130,13 @@ class YaleXSBLEOperationSensor(YALEXSBLEEntity, SensorEntity, RestoreEntity):
             },
         )
 
-        self._record_activity(activity, value, attributes)
+        self._record_logbook_activity(activity, attributes)
+        # Raw 0x07 is represented by the human-readable logbook entry below.
+        # Keep the event and attributes, but do not add a second raw history row.
+        if not (
+            isinstance(activity, RawActivity) and activity.activity_type == 0x07
+        ):
+            self._record_activity(activity, value, attributes)
         self._pending_activity_update = activity
 
         if self._cancel_pending_activity_update:
@@ -153,6 +173,52 @@ class YaleXSBLEOperationSensor(YALEXSBLEEntity, SensorEntity, RestoreEntity):
         instance = recorder.get_instance(self.hass)
         instance.queue_task(Event(str(EVENT_STATE_CHANGED), state_changed_data))
 
+    def _record_logbook_activity(
+        self,
+        activity: DoorActivity | LockActivity | RawActivity,
+        attributes: dict[str, Any],
+    ) -> None:
+        """Add a human-readable PIN activity entry to Home Assistant Activity."""
+        if (
+            not isinstance(activity, RawActivity)
+            or activity.activity_type != 0x07
+            or activity.pin_id is None
+            or self._lock_entity_id is None
+            or self.entity_id is None
+        ):
+            return
+
+        activity_key = (
+            activity.raw_frame,
+            dt_util.as_timestamp(activity.timestamp),
+        )
+        if activity_key == self._last_logged_activity_key:
+            return
+        self._last_logged_activity_key = activity_key
+
+        lock_name = self._lock_name()
+        pin_name = attributes.get(ATTR_PIN_NAME, "未知 PIN")
+
+        self.hass.bus.async_fire(
+            EVENT_LOGBOOK_ENTRY,
+            {
+                LOGBOOK_ENTRY_NAME: pin_name,
+                LOGBOOK_ENTRY_MESSAGE: f"{pin_name}以通行碼開鎖",
+                LOGBOOK_ENTRY_DOMAIN: LOCK_DOMAIN,
+                "entity_id": self.entity_id,
+            },
+            time_fired=activity_key[1],
+        )
+
+    def _lock_name(self) -> str:
+        """Return the configured lock name for a human-readable activity entry."""
+        if self._lock_entity_id and (state := self.hass.states.get(self._lock_entity_id)):
+            return state.name
+
+        if self._lock_entity_id:
+            return self._lock_entity_id.split(".", 1)[-1].replace("_", " ").title()
+        return "門鎖"
+
     @callback
     def _flush_pending_update(self, now: dt.datetime) -> None:  # noqa: ARG002
         activity = self._pending_activity_update
@@ -160,9 +226,15 @@ class YaleXSBLEOperationSensor(YALEXSBLEEntity, SensorEntity, RestoreEntity):
 
         _LOGGER.debug("flushing pending activity update")
 
-        self._attr_native_value, self._attr_extra_state_attributes = (
-            self._activity_values(activity)
-        )
+        value, attributes = self._activity_values(activity)
+        # Preserve the last meaningful door/lock state for raw PIN frames. The
+        # raw frame is still available in attributes and in the activity event,
+        # while the friendly logbook entry avoids a duplicate activity row.
+        if not (
+            isinstance(activity, RawActivity) and activity.activity_type == 0x07
+        ):
+            self._attr_native_value = value
+        self._attr_extra_state_attributes = attributes
         self._pending_activity_update = None
 
         self.async_write_ha_state()

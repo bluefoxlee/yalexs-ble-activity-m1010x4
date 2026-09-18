@@ -3,17 +3,17 @@
   "name": "Yale Access Bluetooth Activity",
   "after_dependencies": ["recorder"],
   "codeowners": [
-    "@wbyoung"
+    "@bluefoxlee"
   ],
   "config_flow": true,
   "dependencies": ["yalexs_ble"],
-  "documentation": "https://github.com/wbyoung/yalexs-ble-activity",
+  "documentation": "https://github.com/bluefoxlee/yalexs-ble-activity-m1010x4",
   "homekit": {},
   "iot_class": "calculated",
-  "issue_tracker": "https://github.com/wbyoung/yalexs-ble-activity/issues",
+  "issue_tracker": "https://github.com/bluefoxlee/yalexs-ble-activity-m1010x4/issues",
   "requirements": [],
   "single_config_entry": true,
   "ssdp": [],
-  "version": "0.1.1",
+  "version": "0.2.0",
   "zeroconf": []
 }

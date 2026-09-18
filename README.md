@@ -1,18 +1,20 @@
 # Yale Access Bluetooth Activity for Home Assistant
 
 [![HACS](https://img.shields.io/badge/custom-grey?logo=homeassistantcommunitystore&logoColor=white)][hacs-repo]
-[![HACS installs](https://img.shields.io/github/downloads/wbyoung/yalexs-ble-activity/latest/total?label=installs&color=blue)][hacs-repo]
-[![Version](https://img.shields.io/github/v/release/wbyoung/yalexs-ble-activity)][releases]
-![Downloads](https://img.shields.io/github/downloads/wbyoung/yalexs-ble-activity/total)
-![Build](https://img.shields.io/github/actions/workflow/status/wbyoung/yalexs-ble-activity/pytest.yml)
-[![Github Sponsors](https://img.shields.io/badge/GitHub%20Sponsors-grey?&logo=GitHub-Sponsors&logoColor=EA4AAA)][gh-sponsors]
+[![HACS installs](https://img.shields.io/github/downloads/bluefoxlee/yalexs-ble-activity-m1010x4/latest/total?label=installs&color=blue)][hacs-repo]
+[![Version](https://img.shields.io/github/v/release/bluefoxlee/yalexs-ble-activity-m1010x4)][releases]
+![Downloads](https://img.shields.io/github/downloads/bluefoxlee/yalexs-ble-activity-m1010x4/total)
+![Build](https://img.shields.io/github/actions/workflow/status/bluefoxlee/yalexs-ble-activity-m1010x4/pytest.yml)
 
 Activity history sensor for Yale Access Bluetooth.
 
 Disclaimers:
 
 - Enabling this integration for a lock will consume activity from the lock. This means that the activity **will not be available** to the Yale mobile app.
-- This installs a [custom patched version](https://github.com/wbyoung/yalexs-ble/branches) of [`yalexs-ble`](https://github.com/Yale-Libs/yalexs-ble).
+- This installs the [custom patched version](https://github.com/bluefoxlee/yalexs-ble-m1010x4/tree/yalexs-ble-4.0.1-patches) of [`yalexs-ble`](https://github.com/Yale-Libs/yalexs-ble) maintained for this fork.
+- This fork is based on the original project by [wbyoung](https://github.com/wbyoung).
+- The provisional `0x07` PIN layout is verified for the M1010X4 keypad/module variant. Other Yale/August models may use a different activity type or frame layout and are left unsupported until their frames are verified.
+- This is an independent fork and is not affiliated with Yale, Yale Home, August, or Home Assistant.
 - This is an implementation of work done to [integrate activity into Home Assistant Core](https://github.com/home-assistant/core/pull/151436#issuecomment-3243330215).
 - The ideas were rejected from HA Core because there is not yet a standard architecture for [recording historic state changes](https://github.com/home-assistant/architecture/discussions/580).
 
@@ -25,7 +27,7 @@ Installation through [HACS][hacs] is the preferred installation method.
 1. Go to the HACS dashboard.
 1. Click the ellipsis menu (three dots) in the top right &rarr; choose _Custom repositories_.
 1. Enter the URL of this GitHub repository,
-   `https://github.com/wbyoung/yalexs-ble-activity`, in the _Repository_ field.
+   `https://github.com/bluefoxlee/yalexs-ble-activity-m1010x4`, in the _Repository_ field.
 1. Select _Integration_ as the category.
 1. Click _Add_.
 1. Search for "Yale Access Bluetooth Activity" &rarr; select it &rarr; press _DOWNLOAD_.
@@ -112,10 +114,26 @@ This will be triggered for all activity that is received from the lock regardles
 - `state`: The state of the activity which mirrors that of [`sensor.<lock_name>_operation`](#sensorlock_name_operation).
 - `attributes`: The attributes for the activity which mirrors that of the [`sensor.<lock_name>_operation`](#sensorlock_name_operation) attributes.
 
+For a received `0x07` PIN activity, the integration also writes a human-readable
+entry directly to Home Assistant's Activity panel and associates it with the
+operation sensor. The configured PIN identifier is included in the message and
+follows the form:
+
+```text
+Front Door — Person A以通行碼開鎖
+```
+
+The raw `activity_0x07` frame remains available in the sensor event and
+attributes, but is not written as a second historical Activity row.
+
+The lock domain supplies the lock icon. The raw identifier remains available on
+the operation sensor for looking up or updating the local mapping. Existing
+`yalexs_ble_activity` events remain available for notifications and other
+automations.
+
 [config-flow-start]: https://my.home-assistant.io/redirect/config_flow_start/?domain=yalexs_ble_activity
 [hacs]: https://hacs.xyz/
 [hacs-repo]: https://github.com/hacs/integration
 [hacs-badge]: https://my.home-assistant.io/badges/hacs_repository.svg
-[hacs-open]: https://my.home-assistant.io/redirect/hacs_repository/?owner=wbyoung&repository=yalexs-ble-activity&category=integration
-[releases]: https://github.com/wbyoung/yalexs-ble-activity/releases
-[gh-sponsors]: https://github.com/sponsors/wbyoung
+[hacs-open]: https://my.home-assistant.io/redirect/hacs_repository/?owner=bluefoxlee&repository=yalexs-ble-activity-m1010x4&category=integration
+[releases]: https://github.com/bluefoxlee/yalexs-ble-activity-m1010x4/releases

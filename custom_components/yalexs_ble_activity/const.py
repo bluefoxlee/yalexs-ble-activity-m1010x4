@@ -4,7 +4,8 @@ from typing import Final
 
 DOMAIN: Final = "yalexs_ble_activity"
 YALEXSBLE_PATCH_URL = (
-    "git+https://github.com/wbyoung/yalexs-ble@yalexs-ble-{version}-patches"
+    "git+https://github.com/bluefoxlee/yalexs-ble-m1010x4@"
+    "yalexs-ble-{version}-patches"
 )
 
 ATTR_REMOTE_TYPE: Final = "remote_type"

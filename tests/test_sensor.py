@@ -3,7 +3,7 @@
 from typing import Any
 from unittest.mock import patch
 
-from homeassistant.const import Platform
+from homeassistant.const import EVENT_LOGBOOK_ENTRY, Platform
 from homeassistant.core import HomeAssistant, State
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.restore_state import STORAGE_KEY as RESTORE_STATE_KEY
@@ -200,6 +200,72 @@ async def test_raw_pin_activity_includes_configured_name(
     assert attributes["pin_id"] == "0x22"
     assert attributes["pin_name"] == "Person B"
     assert attributes["last_pin_name"] == "Person B"
+
+
+async def test_raw_pin_activity_is_written_to_activity(
+    hass: HomeAssistant,
+    config_entry: MockConfigEntry,
+    lock: er.RegistryEntry,
+) -> None:
+    """Write a friendly PIN entry to the HA Activity panel."""
+    config_entry.data[CONF_PIN_NAMES] = {"0x22": "Person B"}
+    await setup_integration(hass, config_entry)
+
+    logbook_events = []
+    hass.bus.async_listen(EVENT_LOGBOOK_ENTRY, logbook_events.append)
+    activity_update = _activity_update_handler(hass, lock)
+    activity = RawActivity(
+        timestamp=MOCK_UTC_NOW,
+        activity_type=0x07,
+        raw_frame="bb2d000007000102030405060708090a0b0c",
+        pin_id=0x22,
+    )
+
+    activity_update(activity, lock_info=None, connection_info=None)
+    activity_update(activity, lock_info=None, connection_info=None)
+    await hass.async_block_till_done()
+
+    assert len(logbook_events) == 1
+    assert logbook_events[0].data == {
+        "domain": "lock",
+        "entity_id": "sensor.front_door_operation",
+        "message": "Person B以通行碼開鎖",
+        "name": "Person B",
+    }
+    assert logbook_events[0].time_fired_timestamp == pytest.approx(
+        MOCK_UTC_NOW.timestamp()
+    )
+
+
+async def test_raw_pin_activity_does_not_add_duplicate_history_row(
+    hass: HomeAssistant,
+    config_entry: MockConfigEntry,
+    lock: er.RegistryEntry,
+) -> None:
+    """Keep raw PIN details without recording a duplicate sensor state row."""
+    config_entry.data[CONF_PIN_NAMES] = {"0x22": "Person B"}
+    await setup_integration(hass, config_entry)
+
+    activity_update = _activity_update_handler(hass, lock)
+    operation_entity = activity_update.__self__
+    operation_entity._attr_native_value = "lock_locked"
+
+    with patch.object(operation_entity, "_record_activity") as record_activity:
+        activity_update(
+            RawActivity(
+                timestamp=MOCK_UTC_NOW,
+                activity_type=0x07,
+                raw_frame="bb2d000007000102030405060708090a0b0c",
+                pin_id=0x22,
+            ),
+            lock_info=None,
+            connection_info=None,
+        )
+        operation_entity._flush_pending_update(MOCK_UTC_NOW)
+
+    record_activity.assert_not_called()
+    assert operation_entity._attr_native_value == "lock_locked"
+    assert operation_entity._attr_extra_state_attributes["pin_name"] == "Person B"
 
 
 RESTORE_STATE_PARAMETRIZED = ("stored_data", "expected_state", "expected_attributes")
