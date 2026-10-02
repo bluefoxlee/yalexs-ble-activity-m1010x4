@@ -13,7 +13,7 @@ Disclaimers:
 - Enabling this integration for a lock will consume activity from the lock. This means that the activity **will not be available** to the Yale mobile app.
 - This installs the [custom patched version](https://github.com/bluefoxlee/yalexs-ble-m1010x4/tree/yalexs-ble-4.0.1-patches) of [`yalexs-ble`](https://github.com/Yale-Libs/yalexs-ble) maintained for this fork.
 - This fork is based on the original project by [wbyoung](https://github.com/wbyoung).
-- The provisional `0x07` PIN layout is verified for the M1010X4 keypad/module variant. Other Yale/August models may use a different activity type or frame layout and are left unsupported until their frames are verified.
+- The provisional `0x07` PIN layout is verified for the M1010X4 keypad/module variant. Other Yale/August models may use a different activity type or frame layout; verify their frames before relying on the mapping.
 - This is an independent fork and is not affiliated with Yale, Yale Home, August, or Home Assistant.
 - This is an implementation of work done to [integrate activity into Home Assistant Core](https://github.com/home-assistant/core/pull/151436#issuecomment-3243330215).
 - The ideas were rejected from HA Core because there is not yet a standard architecture for [recording historic state changes](https://github.com/home-assistant/architecture/discussions/580).
